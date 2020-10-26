@@ -2,18 +2,22 @@
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![PyPI](https://img.shields.io/pypi/v/finta.svg?style=flat-square)](https://pypi.python.org/pypi/finta/)
-[![](https://img.shields.io/badge/python-3.4+-blue.svg)](https://www.python.org/download/releases/3.4.0/)
+[![Downloads](https://pepy.tech/badge/finta/month)](https://pepy.tech/project/finta/month)
+[![](https://img.shields.io/badge/python-3.5+-blue.svg)](https://www.python.org/download/releases/3.5.0/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 [![Build Status](https://travis-ci.org/peerchemist/finta.svg?branch=master)](https://travis-ci.org/peerchemist/finta)
+[![Patrons](https://img.shields.io/liberapay/patrons/peerchemist.svg?logo=liberapay)](https://img.shields.io/liberapay/patrons/peerchemist.svg?logo=liberapay)
 
 Common financial technical indicators implemented in Pandas.
+
+![example](examples/plot.png)
 
 *This is work in progress, bugs are expected and results of some indicators
 may not be accurate.*
 
 ## Supported indicators:
 
-Finta supports 76 trading indicators:
+Finta supports over 80 trading indicators:
 
 ```
 * Simple Moving Average 'SMA'
@@ -33,6 +37,7 @@ Finta supports 76 trading indicators:
 * Elastic Volume Moving Average 'EVWMA'
 * Volume Weighted Average Price 'VWAP'
 * Smoothed Moving Average 'SMMA'
+* Fractal Adaptive Moving Average 'FRAMA'
 * Moving Average Convergence Divergence 'MACD'
 * Percentage Price Oscillator 'PPO'
 * Volume-Weighted MACD 'VW_MACD'
@@ -46,6 +51,7 @@ Finta supports 76 trading indicators:
 * Stop-and-Reverse 'SAR'
 * Bollinger Bands 'BBANDS'
 * Bollinger Bands Width 'BBWIDTH'
+* Momentum Breakout Bands 'MOBO'
 * Percent B 'PERCENT_B'
 * Keltner Channels 'KC'
 * Donchian Channel 'DO'
@@ -87,7 +93,6 @@ Finta supports 76 trading indicators:
 * Fisher Transform 'FISH'
 * Ichimoku Cloud 'ICHIMOKU'
 * Adaptive Price Zone 'APZ'
-* Vector Size Indicator 'VR'
 * Squeeze Momentum Indicator 'SQZMI'
 * Volume Price Trend 'VPT'
 * Finite Volume Element 'FVE'
@@ -99,7 +104,7 @@ Finta supports 76 trading indicators:
 
 ## Dependencies:
 
--   python (3.4+)
+-   python (3.5+)
 -   pandas (0.21.1+)
 
 TA class is very well documented and there should be no trouble
@@ -125,7 +130,7 @@ finta expects properly formated `ohlc` DataFrame, with column names in `lowercas
 ### to resample by time period (you can choose different time period)
 `ohlc = resample(df, "24h")`
 
-### You can also load a ohlc DataFrame from .cvs file
+### You can also load a ohlc DataFrame from .csv file
 
 `data_file = ("data/bittrex:btc-usdt.csv")`
 

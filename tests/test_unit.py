@@ -168,6 +168,15 @@ def test_smma():
     assert ma.values[-1] == 8020.2742957005539
 
 
+def test_frama():
+    """test TA.FRAMA"""
+
+    ma = TA.FRAMA(ohlc)
+
+    assert isinstance(ma, series.Series)
+    assert ma.values[-1] == 6574.146054542976
+
+
 def test_macd():
     """test TA.MACD"""
 
@@ -318,6 +327,19 @@ def test_bbands():
     assert bb["BB_UPPER"].values[-1] == 8212.7979228041968
     assert bb["BB_MIDDLE"].values[-1] == 7110.5508235434954
     assert bb["BB_LOWER"].values[-1] == 6008.303724282795
+
+def test_mobo():
+    """test TA.mobo"""
+    
+    mbb = TA.MOBO(ohlc)
+
+    assert isinstance(mbb["BB_UPPER"], series.Series)
+    assert isinstance(mbb["BB_MIDDLE"], series.Series)
+    assert isinstance(mbb["BB_LOWER"], series.Series)
+
+    assert mbb["BB_UPPER"].values[-1] == 6919.48336631047
+    assert mbb["BB_MIDDLE"].values[-1] == 6633.750408882997
+    assert mbb["BB_LOWER"].values[-1] == 6348.017451455525
 
 
 def test_bbwidth():
@@ -612,7 +634,7 @@ def test_cci():
     cci = TA.CCI(ohlc)
 
     assert isinstance(cci, series.Series)
-    assert cci.values[-1] == -85.685463804097068
+    assert cci.values[-1] == -91.76341956464088
 
 
 def test_basp():
@@ -656,8 +678,8 @@ def test_chandelier():
     assert isinstance(chan["Long."], series.Series)
     assert isinstance(chan["Short."], series.Series)
 
-    assert chan["Long."].values[-1] == 6723.8927646477259
-    assert chan["Short."].values[-1] == 5326.4927656377258
+    assert chan["Long."].values[-1] == 6801.592764647726
+    assert chan["Short."].values[-1] == 7091.407235352274
 
 
 def test_qstick():
@@ -718,14 +740,6 @@ def test_apz():
     assert isinstance(apz["LOWER"], series.Series)
 
     assert apz["UPPER"].values[-1] == 7193.9772579390283
-
-
-def test_vr():
-    """test TA.VR"""
-
-    with pytest.raises(ValueError):
-
-        vr = TA.VR(ohlc)
 
 
 def test_sqzmi():
@@ -829,13 +843,5 @@ def test_stc():
     stc = TA.STC(ohlc)
 
     assert isinstance(stc, series.Series)
-    assert stc.values[-1] == 10.000000000000165
+    assert stc.values[-1] == 1.1131836193574902e-13
 
-
-def test_exk():
-    """test TA.EXK"""
-
-    exk = TA.EXK(ohlc)
-
-    assert isinstance(exk, float)
-    assert exk == 4.049110589039371

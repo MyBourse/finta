@@ -52,7 +52,7 @@ def apply(decorator):
 @apply(inputvalidator(input_="ohlc"))
 class TA:
 
-    __version__ = "1.0"
+    __version__ = "1.2"
 
     @classmethod
     def SMA(cls, ohlc: DataFrame, period: int = 41, column: str = "close") -> Series:
@@ -202,7 +202,7 @@ class TA:
         A buy/sell signals are generated when the TRIX crosses above/below the signal line and is also above/below zero.
 
         The TRIX was developed by Jack K. Hutson, publisher of Technical Analysis of Stocks & Commodities magazine,
-        and was introduced in Volume 1, Number 5 of that magazine. 
+        and was introduced in Volume 1, Number 5 of that magazine.
         """
 
         data = ohlc[column]
@@ -340,7 +340,7 @@ class TA:
         """
 
         d = (period * (period + 1)) / 2  # denominator
-        weights = pd.Series(np.arange(1, period + 1))
+        weights = np.arange(1, period + 1)
 
         def linear(w):
             def _compute(x):
@@ -460,9 +460,43 @@ class TA:
         raise NotImplementedError
 
     @classmethod
-    def FRAMA(cls, ohlc: DataFrame, period: int = 16) -> Series:
-        """Fractal Adaptive Moving Average"""
-        raise NotImplementedError
+    def FRAMA(cls, ohlc: DataFrame, period: int = 16, batch: int=10) -> Series:
+        """Fractal Adaptive Moving Average
+        Source: http://www.stockspotter.com/Files/frama.pdf
+        Adopted from: https://www.quantopian.com/posts/frama-fractal-adaptive-moving-average-in-python
+
+        :period: Specifies the number of periods used for FRANA calculation
+        :batch: Specifies the size of batches used for FRAMA calculation
+        """
+
+        assert period % 2 == 0, print("FRAMA period must be even")
+
+        c = ohlc.close.copy()
+        window = batch * 2
+
+        hh = c.rolling(batch).max()
+        ll = c.rolling(batch).min()
+
+        n1 = (hh - ll) / batch
+        n2 = n1.shift(batch)
+
+        hh2 = c.rolling(window).max()
+        ll2 = c.rolling(window).min()
+        n3 = (hh2 - ll2) / window
+
+        # calculate fractal dimension
+        D = (np.log(n1 + n2) - np.log(n3)) / np.log(2)
+        alp = np.exp(-4.6 * (D - 1))
+        alp = np.clip(alp, .01, 1).values
+
+        filt = c.values
+        for i, x in enumerate(alp):
+            cl = c.values[i]
+            if i < window:
+                continue
+            filt[i] = cl * x + (1 - x) * filt[i - 1]
+
+        return pd.Series(filt, index=ohlc.index, name="{0} period FRAMA.".format(period))
 
     @classmethod
     def MACD(
@@ -623,7 +657,7 @@ class TA:
         The ROC calculation compares the current price with the price “n” periods ago."""
 
         return pd.Series(
-            (ohlc["close"].diff(period) / ohlc[column].shift(period)) * 100, name="ROC"
+            (ohlc[column].diff(period) / ohlc[column].shift(period)) * 100, name="ROC"
         )
 
     @classmethod
@@ -634,7 +668,7 @@ class TA:
         atr_period: int = 26,
         column: str = "close",
     ) -> Series:
-        """The Volatility-Based-Momentum (VBM) indicator, The calculation for a volatility based momentum (VBM) 
+        """The Volatility-Based-Momentum (VBM) indicator, The calculation for a volatility based momentum (VBM)
         indicator is very similar to ROC, but divides by the security’s historical volatility instead.
         The average true range indicator (ATR) is used to compute historical volatility.
         VBM(n,v) = (Close — Close n periods ago) / ATR(v periods)
@@ -694,7 +728,7 @@ class TA:
 
         # v2 = WMA(wma_period) of v1
         d = (wma_period * (wma_period + 1)) / 2  # denominator
-        weights = pd.Series(np.arange(1, wma_period + 1))
+        weights = np.arange(1, wma_period + 1)
 
         def linear(w):
             def _compute(x):
@@ -719,8 +753,8 @@ class TA:
         cls, ohlc: DataFrame, column: str = "close", adjust: bool = True
     ) -> Series:
         """
-        The Dynamic Momentum Index is a variable term RSI. The RSI term varies from 3 to 30. The variable 
-        time period makes the RSI more responsive to short-term moves. The more volatile the price is, 
+        The Dynamic Momentum Index is a variable term RSI. The RSI term varies from 3 to 30. The variable
+        time period makes the RSI more responsive to short-term moves. The more volatile the price is,
         the shorter the time period is. It is interpreted in the same way as the RSI, but provides signals earlier.
         Readings below 30 are considered oversold, and levels over 70 are considered overbought. The indicator
         oscillates between 0 and 100.
@@ -828,11 +862,11 @@ class TA:
     @classmethod
     def PSAR(cls, ohlc: DataFrame, iaf: int = 0.02, maxaf: int = 0.2) -> DataFrame:
         """
-        The parabolic SAR indicator, developed by J. Wells Wilder, is used by traders to determine trend direction and potential reversals in price. 
-        The indicator uses a trailing stop and reverse method called "SAR," or stop and reverse, to identify suitable exit and entry points. 
+        The parabolic SAR indicator, developed by J. Wells Wilder, is used by traders to determine trend direction and potential reversals in price.
+        The indicator uses a trailing stop and reverse method called "SAR," or stop and reverse, to identify suitable exit and entry points.
         Traders also refer to the indicator as the parabolic stop and reverse, parabolic SAR, or PSAR.
         https://www.investopedia.com/terms/p/parabolicindicator.asp
-        https://virtualizedfrog.wordpress.com/2014/12/09/parabolic-sar-implementation-in-python/        
+        https://virtualizedfrog.wordpress.com/2014/12/09/parabolic-sar-implementation-in-python/
         """
 
         length = len(ohlc)
@@ -904,7 +938,7 @@ class TA:
         period: int = 20,
         MA: Series = None,
         column: str = "close",
-        std_multiplier: int = 2,
+        std_multiplier: float = 2,
     ) -> DataFrame:
         """
          Developed by John Bollinger, Bollinger Bands® are volatility bands placed above and below a moving average.
@@ -926,6 +960,24 @@ class TA:
         lower_bb = pd.Series(middle_band - (std_multiplier * std), name="BB_LOWER")
 
         return pd.concat([upper_bb, middle_band, lower_bb], axis=1)
+
+    @classmethod
+    def MOBO(
+        cls,
+        ohlc: DataFrame,
+        period: int = 10,
+        std_multiplier: float = 0.8,
+        column: str = "close",
+    ) -> DataFrame:
+
+        """
+        "MOBO bands are based on a zone of 0.80 standard deviation with a 10 period look-back"
+        If the price breaks out of the MOBO band it can signify a trend move or price spike
+        Contains 42% of price movements(noise) within bands.
+        """
+
+        BB = TA.BBANDS(ohlc, period=10, std_multiplier=0.8, column=column)
+        return BB
 
     @classmethod
     def BBWIDTH(
@@ -1230,7 +1282,7 @@ class TA:
 
     @classmethod
     def AO(cls, ohlc: DataFrame, slow_period: int = 34, fast_period: int = 5) -> Series:
-        """'EMA', 
+        """'EMA',
         Awesome Oscillator is an indicator used to measure market momentum. AO calculates the difference of a 34 Period and 5 Period Simple Moving Averages.
         The Simple Moving Averages that are used are not calculated using closing price but rather each bar's midpoints.
         AO is generally used to affirm trends or to anticipate possible reversals. """
@@ -1263,7 +1315,9 @@ class TA:
     def BOP(cls, ohlc: DataFrame) -> Series:
         """Balance Of Power indicator"""
 
-        return pd.Series((ohlc.close -  ohlc.open) / (ohlc.high - ohlc.low), name="Balance Of Power")
+        return pd.Series(
+            (ohlc.close - ohlc.open) / (ohlc.high - ohlc.low), name="Balance Of Power"
+        )
 
     @classmethod
     def VORTEX(cls, ohlc: DataFrame, period: int = 14) -> DataFrame:
@@ -1591,8 +1645,11 @@ class TA:
 
         tp = cls.TP(ohlc)
         tp_rolling = tp.rolling(window=period, min_periods=0)
+        # calculate MAD (Mean Deviation)
+        # https://www.khanacademy.org/math/statistics-probability/summarizing-quantitative-data/other-measures-of-spread/a/mean-absolute-deviation-mad-review
+        mad = tp_rolling.apply(lambda s: abs(s - s.mean()).mean(), raw=True)
         return pd.Series(
-            (tp - tp_rolling.mean()) / (constant * tp_rolling.std()),
+            (tp - tp_rolling.mean()) / (constant * mad),
             name="{0} period CCI".format(period),
         )
 
@@ -1684,10 +1741,9 @@ class TA:
     def CHANDELIER(
         cls,
         ohlc: DataFrame,
-        period_1: int = 14,
-        period_2: int = 22,
+        short_period: int = 22,
+        long_period: int = 22,
         k: int = 3,
-        column: str = "close",
     ) -> DataFrame:
         """
         Chandelier Exit sets a trailing stop-loss based on the Average True Range (ATR).
@@ -1698,11 +1754,11 @@ class TA:
         """
 
         l = pd.Series(
-            ohlc[column].rolling(window=period_2).max() - cls.ATR(ohlc, 22) * k,
+            ohlc["high"].rolling(window=long_period).max() - cls.ATR(ohlc, 22) * k,
             name="Long.",
         )
         s = pd.Series(
-            ohlc[column].rolling(window=period_1).min() - cls.ATR(ohlc, 22) * k,
+            ohlc["low"].rolling(window=short_period).min() + cls.ATR(ohlc, 22) * k,
             name="Short.",
         )
 
@@ -1769,10 +1825,6 @@ class TA:
     def FISH(cls, ohlc: DataFrame, period: int = 10, adjust: bool = True) -> Series:
         """
         Fisher Transform was presented by John Ehlers. It assumes that price distributions behave like square waves.
-
-        The Fisher Transform uses the mid-point or median price in a series of calculations to produce an oscillator.
-
-        A signal line which is a previous value of itself is also calculated.
         """
 
         from numpy import log, seterr
@@ -1881,30 +1933,6 @@ class TA:
         lower_band = pd.Series(MA - (volatility_value * dev_factor), name="LOWER")
 
         return pd.concat([upper_band, lower_band], axis=1)
-
-    @classmethod
-    def VR(cls, ohlc: DataFrame, period: int = 14) -> Series:
-        """
-        Vector Size Indicator
-        :param pd.DataFrame ohlc: 'open, high, low, close' pandas DataFrame
-        :return pd.Series: indicator calcs as pandas Series
-        """
-
-        vector_size = len(ohlc.close)
-        high_low_diff = ohlc.high - ohlc.low
-        high_close_diff = np.zeros(vector_size)
-        high_close_diff[1:] = np.abs(ohlc.high[1:] - ohlc.close[0 : vector_size - 1])
-        low_close_diff = np.zeros(vector_size)
-        low_close_diff[1:] = np.abs(ohlc.low[1:] - ohlc.close[0 : vector_size - 1])
-        vectors_stacked = np.vstack((high_low_diff, high_close_diff, low_close_diff))
-
-        tr = np.amax(vectors_stacked, axis=0)
-        vr = pd.Series(
-            tr / cls.EMA(ohlc.close, period=period),
-            name="{0} period VR.".format(period),
-        )
-
-        return vr
 
     @classmethod
     def SQZMI(cls, ohlc: DataFrame, period: int = 20, MA: Series = None) -> DataFrame:
@@ -2068,7 +2096,7 @@ class TA:
 
     @classmethod
     def MSD(
-        cls, ohlc: DataFrame, period: int = 21, ddof: int = 1, column: str = "close"
+        cls, ohlc: DataFrame, period: int = 21, column: str = "close"
     ) -> Series:
         """
         Standard deviation is a statistical term that measures the amount of variability or dispersion around an average.
@@ -2080,7 +2108,6 @@ class TA:
         Analysts generally agree that high volatility is part of major tops, while low volatility accompanies major bottoms.
 
         :period: Specifies the number of Periods used for MSD calculation
-        :ddof: Delta Degrees of Freedom. The divisor used in calculations is N - ddof, where N represents the number of elements.
         """
 
         return pd.Series(ohlc[column].rolling(period).std(), name="MSD")
@@ -2091,27 +2118,32 @@ class TA:
         ohlc: DataFrame,
         period_fast: int = 23,
         period_slow: int = 50,
-        period: int = 10,
+        k_period: int = 10,
+        d_period: int = 3,
         column: str = "close",
-        adjust: bool = True,
+        adjust: bool = True
     ) -> Series:
         """
+        The Schaff Trend Cycle (Oscillator) can be viewed as Double Smoothed
+        Stochastic of the MACD.
+
         Schaff Trend Cycle - Three input values are used with the STC:
         – Sh: shorter-term Exponential Moving Average with a default period of 23
         – Lg: longer-term Exponential Moving Average with a default period of 50
-        – Cycle, set at half the cycle length with a default value of 10.
+        – Cycle, set at half the cycle length with a default value of 10. (Stoch K-period)
+        - Smooth, set at smoothing at 3 (Stoch D-period)
+
         The STC is calculated in the following order:
-        First, the 23-period and the 50-period EMA and the MACD values are calculated:
-        EMA1 = EMA (Close, Short Length);
-        EMA2 = EMA (Close, Long Length);
+        EMA1 = EMA (Close, fast_period);
+        EMA2 = EMA (Close, slow_period);
         MACD = EMA1 – EMA2.
         Second, the 10-period Stochastic from the MACD values is calculated:
-        %K (MACD) = %KV (MACD, 10);
-        %D (MACD) = %DV (MACD, 10);
-        Schaff = 100 x (MACD – %K (MACD)) / (%D (MACD) – %K (MACD)).
-        In case the STC indicator is decreasing, this indicates that the trend cycle 
+        STOCH_K, STOCH_D  = StochasticFull(MACD, k_period, d_period)  // Stoch of MACD
+        STC =  average(STOCH_D, d_period) // second smoothed
+
+        In case the STC indicator is decreasing, this indicates that the trend cycle
         is falling, while the price tends to stabilize or follow the cycle to the downside.
-        In case the STC indicator is increasing, this indicates that the trend cycle 
+        In case the STC indicator is increasing, this indicates that the trend cycle
         is up, while the price tends to stabilize or follow the cycle to the upside.
         """
         EMA_fast = pd.Series(
@@ -2125,36 +2157,15 @@ class TA:
         )
 
         MACD = pd.Series((EMA_fast - EMA_slow), name="MACD")
-        STOK = (
-            (MACD - MACD.rolling(window=period).min())
-            / (MACD.rolling(window=period).max() - MACD.rolling(window=period).min())
-        ) * 100
-        STOD = STOK.rolling(window=period).mean()
 
-        return pd.Series(
-            100 * (MACD - (STOK * MACD)) / ((STOD * MACD) - (STOK * MACD)),
-            name="{0} period STC.".format(period),
-        )
+        STOK = pd.Series((
+            (MACD - MACD.rolling(window=k_period).min())
+            / (MACD.rolling(window=k_period).max() - MACD.rolling(window=k_period).min())
+            ) * 100)
 
-    @classmethod
-    def EXK(cls, ohlc: DataFrame, column="close") -> float:
-
-        """
-        Excess Kurtosis
-        Kurtosis measures the "fatness" of the tails of a distribution. Positive excess kurtosis
-        means that distribution has fatter tails than a normal distribution. Fat tails means there
-        is a higher than normal probability of big positive and negative returns realizations. 
-        When calculating kurtosis, a result of +3.00 indicates the absence of kurtosis (distribution is mesokurtic)
-        https://www.youtube.com/watch?v=-pb86fuZqr8
-
-        """
-
-        sum_of_dist = sum((ohlc[column] - ohlc[column].mean()).pow(4))
-
-        normalizer = pow(ohlc[column].std(), 4) * len(ohlc[column])
-
-        return sum_of_dist / normalizer
-
+        STOD = STOK.rolling(window=d_period).mean()
+        STOD_DoubleSmooth = STOD.rolling(window=d_period).mean()  # "double smoothed"
+        return pd.Series(STOD_DoubleSmooth, name="{0} period STC".format(k_period))
 
 if __name__ == "__main__":
     print([k for k in TA.__dict__.keys() if k[0] not in "_"])
