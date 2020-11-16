@@ -1437,6 +1437,7 @@ class TA:
         )
 
     @classmethod
+    @inputvalidator(input_="ohlcv")
     def MFI(cls, ohlc: DataFrame, period: int = 14) -> Series:
         """The money flow index (MFI) is a momentum indicator that measures
         the inflow and outflow of money into a security over a specific period of time.
@@ -1516,6 +1517,7 @@ class TA:
         return wobv.cumsum()
 
     @classmethod
+    @inputvalidator(input_="ohlcv")
     def VZO(
         cls,
         ohlc: DataFrame,
@@ -1549,7 +1551,7 @@ class TA:
         then the closing price will have a positive value (bullish); otherwise it will have a negative value (bearish).
         source: http://traders.com/Documentation/FEEDbk_docs/2011/06/Khalil.html
 
-        :period: Specifies the number of Periods used for eVWMA calculation
+        :period: Specifies the number of Periods used for PZO calculation
         """
 
         sign = lambda a: (a > 0) - (a < 0)
@@ -1972,6 +1974,7 @@ class TA:
         return pd.Series(comb["SQZ"], name="{0} period SQZMI".format(period))
 
     @classmethod
+    @inputvalidator(input_="ohlcv")
     def VPT(cls, ohlc: DataFrame) -> Series:
         """
         Volume Price Trend
@@ -1990,6 +1993,7 @@ class TA:
         return pd.Series(vpt, name="VPT")
 
     @classmethod
+    @inputvalidator(input_="ohlcv")
     def FVE(cls, ohlc: DataFrame, period: int = 22, factor: int = 0.3) -> Series:
         """
         FVE is a money flow indicator, but it has two important innovations: first, the F VE takes into account both intra and
@@ -2166,6 +2170,72 @@ class TA:
         STOD = STOK.rolling(window=d_period).mean()
         STOD_DoubleSmooth = STOD.rolling(window=d_period).mean()  # "double smoothed"
         return pd.Series(STOD_DoubleSmooth, name="{0} period STC".format(k_period))
+
+    @classmethod
+    @inputvalidator(input_="ohlcv")
+    def EVSTC(
+        cls,
+        ohlc: DataFrame,
+        period_fast: int = 12,
+        period_slow: int = 30,
+        k_period: int = 10,
+        d_period: int = 3,
+        adjust: bool = True
+    ) -> Series:
+        """Modification of Schaff Trend Cycle using EVWMA MACD for calculation"""
+
+        ema_slow = cls.EVWMA(ohlc, period_slow)
+        ema_fast = cls.EVWMA(ohlc, period_fast)
+
+        macd = ema_fast - ema_slow
+
+        STOK = pd.Series((
+            (macd - macd.rolling(window=k_period).min())
+            / (macd.rolling(window=k_period).max() - macd.rolling(window=k_period).min())
+            ) * 100)
+
+        STOD = STOK.rolling(window=d_period).mean()
+        STOD_DoubleSmooth = STOD.rolling(window=d_period).mean()
+
+        return pd.Series(STOD_DoubleSmooth, name="{0} period EVSTC".format(k_period))
+
+
+    @classmethod
+    def WILLIAMS_FRACTAL(cls, ohlc: DataFrame, period: int = 2) -> DataFrame:
+        """
+        Williams Fractal Indicator
+        Source: https://www.investopedia.com/terms/f/fractal.asp
+
+        :param DataFrame ohlc: data
+        :param int period: how many lower highs/higher lows the extremum value should be preceded and followed.
+        :return DataFrame: fractals identified by boolean
+        """
+
+        def is_bullish_fractal(x):
+            if x[period] == min(x):
+                return True
+            return False
+
+        def is_bearish_fractal(x):
+            if x[period] == max(x):
+                return True
+            return False
+
+        window_size = period * 2 + 1
+        bearish_fractals = pd.Series(
+            ohlc.high.rolling(window=window_size, center=True).apply(
+                is_bearish_fractal, raw=True
+            ),
+            name="BearishFractal",
+        )
+        bullish_fractals = pd.Series(
+            ohlc.low.rolling(window=window_size, center=True).apply(
+                is_bullish_fractal, raw=True
+            ),
+            name="BullishFractal",
+        )
+        return pd.concat([bearish_fractals, bullish_fractals], axis=1)
+
 
 if __name__ == "__main__":
     print([k for k in TA.__dict__.keys() if k[0] not in "_"])

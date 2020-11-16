@@ -837,11 +837,33 @@ def test_msd():
     assert isinstance(msd, series.Series)
     assert msd.values[-1] == 542.25201592159419
 
+
 def test_stc():
     """test TA.STC"""
 
     stc = TA.STC(ohlc)
 
     assert isinstance(stc, series.Series)
+    assert 0 < stc.values[-1] < 100
     assert stc.values[-1] == 1.1131836193574902e-13
 
+
+def test_evstc():
+    """test TA.EVSTC"""
+
+    stc = TA.EVSTC(ohlc)
+
+    assert isinstance(stc, series.Series)
+    assert 0 < stc.values[-1] < 100
+    assert stc.values[-1] == 4.7665575190573385e-14
+
+
+def test_williams_fractal():
+    """test TA.WILLIAMS_FRACTAL"""
+
+    fractals = TA.WILLIAMS_FRACTAL(ohlc)
+
+    assert isinstance(fractals["BullishFractal"], series.Series)
+    assert isinstance(fractals["BearishFractal"], series.Series)
+    assert fractals.BearishFractal.values[-3] == 0
+    assert fractals.BullishFractal.values[-3] == 0
